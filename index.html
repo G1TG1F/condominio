@@ -3,128 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulatore Costi Condominio Manzoni</title>
+    <title>Dossier Condominio Manzoni - Analisi Triennale</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: sans-serif; line-height: 1.5; padding: 20px; color: #333; max-width: 900px; margin: auto; }
-        .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .controls { display: grid; gap: 15px; margin-bottom: 30px; }
-        .control-group { display: flex; flex-direction: column; }
-        label { font-weight: bold; margin-bottom: 5px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f8f9fa; }
-        .highlight { background-color: #e8f5e9; font-weight: bold; }
+        :root { --primary: #2c3e50; --accent: #27ae60; --warning: #e74c3c; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--primary); margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .slider-group { margin-bottom: 25px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 1.1rem; }
+        input[type=range] { width: 100%; margin-bottom: 10px; }
+        .admin-card { border-left: 8px solid #cbd5e0; transition: transform 0.2s; cursor: pointer; }
+        .admin-card.winner { border-left-color: var(--accent); background: #f0fff4; }
+        .admin-card h2 { margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
+        .price-tag { font-size: 1.8rem; color: var(--primary); font-weight: 800; }
+        .monthly { font-size: 1.1rem; color: #4a5568; margin-bottom: 15px; }
+        .details { display: none; padding-top: 15px; border-top: 1px solid #edf2f7; font-size: 0.95rem; }
+        .details.active { display: block; }
+        .alert { color: var(--warning); font-weight: bold; font-size: 0.9rem; margin-top: 10px; border: 1px solid var(--warning); padding: 5px; border-radius: 4px; display: inline-block; }
+        .badge { background: #edf2f7; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; margin-right: 5px; }
+        .pro-con { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .pro { color: #2f855a; font-size: 0.85rem; }
+        .con { color: #c53030; font-size: 0.85rem; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Simulatore Piano di Spesa Triennale</h1>
-        <p>Regola i parametri per confrontare i preventivi (45 unità, 3 anni).</p>
-        
-        <div class="controls">
-            <div class="control-group">
-                <label id="lavoriLabel">Importo Lavori Straordinari: € 160.000</label>
+    <div class="container">
+        <div class="card">
+            <h1 style="text-align:center">Piano di Spesa Triennale</h1>
+            <div class="slider-group">
+                <label id="labelLavori">Lavori Straordinari: € 160.000</label>
                 <input type="range" id="lavori" min="0" max="500000" step="10000" value="160000">
             </div>
-            <div class="control-group">
-                <label id="assembleeLabel">Assemblee Serali/anno: 4</label>
-                <input type="range" id="serali" min="0" max="10" step="1" value="4">
+            <div class="slider-group">
+                <label id="labelAssemblee">Assemblee/anno: 4</label>
+                <input type="range" id="assemblee" min="1" max="10" step="1" value="4">
+            </div>
+            <div class="slider-group">
+                <label id="labelOra">Orario fine assemblea: 20:00</label>
+                <input type="range" id="ora" min="15" max="24" step="1" value="20">
             </div>
         </div>
 
-        <canvas id="costChart" height="150"></canvas>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Amministratore</th>
-                    <th>Totale 3 Anni</th>
-                    <th>Costo Mese/Unità</th>
-                </tr>
-            </thead>
-            <tbody id="resultTable"></tbody>
-        </table>
+        <div id="results"></div>
     </div>
 
     <script>
-        const ctx = document.getElementById('costChart').getContext('2d');
-        let chart;
-
-        function calculate() {
+        function update() {
             const lavori = parseInt(document.getElementById('lavori').value);
-            const serali = parseInt(document.getElementById('serali').value);
-            const unità = 45;
+            const numAss = parseInt(document.getElementById('assemblee').value);
+            const ora = parseInt(document.getElementById('ora').value);
+            const unita = 45;
             const anni = 3;
 
-            document.getElementById('lavoriLabel').innerText = `Importo Lavori Straordinari: € ${lavori.toLocaleString()}`;
-            document.getElementById('assembleeLabel').innerText = `Assemblee Serali/anno: ${serali}`;
+            document.getElementById('labelLavori').innerText = `Lavori Straordinari: € ${lavori.toLocaleString()}`;
+            document.getElementById('labelAssemblee').innerText = `Assemblee/anno: ${numAss}`;
+            document.getElementById('labelOra').innerText = `Orario fine assemblea: ${ora}:00`;
 
-            // LOGICA DI CALCOLO (basata sui preventivi analizzati)
-            const costs = [
+            const admins = [
                 {
                     name: "Mario Micarelli",
-                    total: (3800 * anni) + (lavori * 0.02) + (160 * anni) + (serali > 2 ? (serali - 2) * 150 * anni : 0)
+                    base: 3800 * anni,
+                    lavori: lavori * 0.02,
+                    fisco: 160 * anni,
+                    extraAss: (numAss > 2 ? (numAss - 2) * 150 * anni : 0),
+                    pros: ["Pareri legali/tecnici GRATIS", "Reperibilità h24", "Sito web dedicato"],
+                    cons: ["Sito semplice, non app"],
+                    note: ""
                 },
                 {
                     name: "Claudio Sciarra",
-                    total: (3500 * anni) + (lavori * 0.06) + (serali * 300 * anni) + (unità * 25 * anni) + (200 * anni) + (80 * anni)
+                    base: 3500 * anni,
+                    lavori: lavori * 0.03, // Onesto: solo gestione 3%
+                    fisco: (200 * anni) + (55 * anni),
+                    utenze: (unita * 25 * anni),
+                    penale: (ora > 19 ? 300 * numAss * anni : 0),
+                    extraAss: (numAss > 2 ? (numAss - 2) * 100 * anni : 0),
+                    pros: ["Uso Google Meet", "App MioCondominio"],
+                    cons: ["Penale oraria 300€", "3% lavori (il più caro)", "Rapporto parentela"],
+                    note: ora > 19 ? "ATTENZIONE: Penale 300€/ora attiva" : ""
                 },
                 {
                     name: "Massimo Lucresi",
-                    total: ((3850 * 1.04) * anni) + ((lavori * 0.02) * 1.04) + (300 * 1.04 * anni) + (150 * 1.04 * anni) + (serali > 2 ? (serali - 2) * 70 * 1.04 * anni : 0) + (unità * 25 * 1.04 * anni)
+                    base: (3850 * anni) * 1.04,
+                    lavori: (lavori * 0.02) * 1.04,
+                    fisco: (300 * anni) * 1.04,
+                    utenze: (unita * 25 * anni) * 1.04,
+                    extraAss: (numAss > 2 ? (numAss - 2) * 70 * anni) * 1.04 : 0,
+                    spese: (150 * anni) * 1.04,
+                    pros: ["Gratis piccoli lavori (<1k)", "Certificazione ISO 9001"],
+                    cons: ["INPS 4% su ogni voce", "Costi fiscali alti"],
+                    note: ""
                 },
                 {
                     name: "Studio MB (Basile)",
-                    total: ((4000 + 666) * 1.22 * anni) + ((lavori * 0.02) * 1.22) + (125 * 1.22 * anni) + (serali > 1 ? (serali - 1) * 100 * 1.22 * anni : 0) + (unità * 35 * 1.22 * anni)
+                    base: (4000 + 666) * anni * 1.22,
+                    lavori: (lavori * 0.02) * 1.22,
+                    fisco: (125 * anni) * 1.22,
+                    utenze: (unita * 35 * anni) * 1.22,
+                    extraAss: (numAss > 1 ? (numAss - 1) * 100 * anni) * 1.22 : 0,
+                    pros: ["Struttura con 5 collaboratori", "Esperienza post-sisma"],
+                    cons: ["Il più caro del lotto", "IVA 22% obbligatoria"],
+                    note: ""
                 }
             ];
 
-            updateUI(costs);
-        }
+            admins.forEach(a => {
+                a.total = (a.base || 0) + (a.lavori || 0) + (a.fisco || 0) + (a.utenze || 0) + (a.penale || 0) + (a.extraAss || 0) + (a.spese || 0);
+            });
 
-        function updateUI(costs) {
-            const tbody = document.getElementById('resultTable');
-            tbody.innerHTML = '';
-            
-            const minCost = Math.min(...costs.map(c => c.total));
+            admins.sort((a, b) => a.total - b.total);
 
-            costs.forEach(c => {
-                const row = document.createElement('tr');
-                if (c.total === minCost) row.className = 'highlight';
+            const resDiv = document.getElementById('results');
+            resDiv.innerHTML = '';
+
+            admins.forEach((a, i) => {
+                const card = document.createElement('div');
+                card.className = `card admin-card ${i === 0 ? 'winner' : ''}`;
+                const mensile = (a.total / anni / unita / 12).toFixed(2);
                 
-                const meseUnità = (c.total / 3 / 45 / 12).toFixed(2);
-                
-                row.innerHTML = `
-                    <td>${c.name}</td>
-                    <td>€ ${Math.round(c.total).toLocaleString()}</td>
-                    <td>€ ${meseUnità}</td>
+                card.innerHTML = `
+                    <h2>${a.name} ${i === 0 ? '🏆' : ''} <span class="price-tag">€ ${Math.round(a.total).toLocaleString()}</span></h2>
+                    <div class="monthly">Quota mensile media: <b>€ ${mensile}</b></div>
+                    ${a.note ? `<div class="alert">${a.note}</div>` : ''}
+                    <div class="details" id="details-${i}">
+                        <p><b>Dettaglio analitico (3 anni):</b></p>
+                        <ul>
+                            <li>Compenso Base: € ${Math.round(a.base || 0).toLocaleString()}</li>
+                            <li>Gestione Lavori: € ${Math.round(a.lavori || 0).toLocaleString()}</li>
+                            <li>Fisco e Utenze: € ${Math.round((a.fisco || 0) + (a.utenze || 0) + (a.spese || 0)).toLocaleString()}</li>
+                            <li>Assemblee/Penali: € ${Math.round((a.extraAss || 0) + (a.penale || 0)).toLocaleString()}</li>
+                        </ul>
+                        <div class="pro-con">
+                            <div class="pro"><b>PRO:</b><br>${a.pros.join('<br>')}</div>
+                            <div class="con"><b>CONTRO:</b><br>${a.cons.join('<br>')}</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right; font-size:0.8rem; color:#718096; margin-top:10px">Clicca per dettagli</div>
                 `;
-                tbody.appendChild(row);
-            });
-
-            updateChart(costs);
-        }
-
-        function updateChart(costs) {
-            if (chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: costs.map(c => c.name),
-                    datasets: [{
-                        label: 'Costo Totale 3 Anni (€)',
-                        data: costs.map(c => c.total),
-                        backgroundColor: costs.map(c => c.total === Math.min(...costs.map(d => d.total)) ? '#4caf50' : '#cfd8dc')
-                    }]
-                },
-                options: { scales: { y: { beginAtZero: true } } }
+                card.onclick = () => document.getElementById(`details-${i}`).classList.toggle('active');
+                resDiv.appendChild(card);
             });
         }
 
-        document.getElementById('lavori').addEventListener('input', calculate);
-        document.getElementById('serali').addEventListener('input', calculate);
-        calculate();
+        document.getElementById('lavori').addEventListener('input', update);
+        document.getElementById('assemblee').addEventListener('input', update);
+        document.getElementById('ora').addEventListener('input', update);
+        update();
     </script>
 </body>
 </html>
