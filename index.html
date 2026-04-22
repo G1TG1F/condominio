@@ -66,7 +66,7 @@
             const lavori = parseInt(document.getElementById('lavori').value);
             const numAss = parseInt(document.getElementById('assemblee').value);
             const ora = parseInt(document.getElementById('ora').value);
-            const anni = 3;
+            const anni = 1;
 
             document.getElementById('labelUnita').innerText = `Unità Immobiliari: ${unita}`;
             document.getElementById('labelLavori').innerText = `Lavori Straordinari Previsti: € ${lavori.toLocaleString('it-IT')}`;
@@ -105,7 +105,7 @@
                 {
                     name: "Studio MB (Basile)",
                     base: (4000 + 666) * anni * 1.22, baseStr: "€ 4.000 + 666 spese + 22% IVA", baseRef: "Pag. 4",
-                    lavori: (lavori * 0.02) * 1.22, lavoriStr: "2% + 22% IVA", lavoriRef: "Pag. 5",
+                    lavori: (lavori * 0.02), lavoriStr: "2%", lavoriRef: "Pag. 5",
                     fisco: ((125) + (unita * 35)) * anni * 1.22, fiscoStr: "Fisco e Utenze + 22% IVA", fiscoRef: "Pag. 4",
                     extraAss: (numAss > 1 ? (numAss - 1) * 100 * anni * 1.22 : 0), assStr: "1 inclusa, extra € 100 + IVA", assRef: "Pag. 4",
                     penale: 0,
