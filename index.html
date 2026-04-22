@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dossier Condominio Manzoni - Analisi Triennale</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #2c3e50; --accent: #27ae60; --warning: #e74c3c; --bg: #f4f7f6; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--primary); margin: 0; padding: 20px; }
@@ -20,27 +19,33 @@
         .monthly { font-size: 1.1rem; color: #4a5568; margin-bottom: 15px; }
         .details { display: none; padding-top: 15px; border-top: 1px solid #edf2f7; font-size: 0.95rem; }
         .details.active { display: block; }
-        .alert { color: var(--warning); font-weight: bold; font-size: 0.9rem; margin-top: 10px; border: 1px solid var(--warning); padding: 5px; border-radius: 4px; display: inline-block; }
-        .badge { background: #edf2f7; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; margin-right: 5px; }
-        .pro-con { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .pro { color: #2f855a; font-size: 0.85rem; }
-        .con { color: #c53030; font-size: 0.85rem; }
+        .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        .breakdown-table th, .breakdown-table td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+        .page-ref { color: #718096; font-size: 0.8rem; font-style: italic; }
+        .download-btn { display: inline-block; background: #3182ce; color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: bold; margin-top: 15px; }
+        .download-btn:hover { background: #2b6cb0; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <h1 style="text-align:center">Piano di Spesa Triennale</h1>
+            <h1 style="text-align:center">Simulatore Spesa Triennale</h1>
+            <p style="text-align:center; color:#718096;">Dati estratti dai preventivi ufficiali</p>
+            
             <div class="slider-group">
-                <label id="labelLavori">Lavori Straordinari: € 160.000</label>
+                <label id="labelUnita">Unità Immobiliari: 45</label>
+                <input type="range" id="unita" min="10" max="100" step="1" value="45">
+            </div>
+            <div class="slider-group">
+                <label id="labelLavori">Lavori Straordinari Previsti: € 160.000</label>
                 <input type="range" id="lavori" min="0" max="500000" step="10000" value="160000">
             </div>
             <div class="slider-group">
-                <label id="labelAssemblee">Assemblee/anno: 4</label>
+                <label id="labelAssemblee">Numero Assemblee Annue: 4</label>
                 <input type="range" id="assemblee" min="1" max="10" step="1" value="4">
             </div>
             <div class="slider-group">
-                <label id="labelOra">Orario fine assemblea: 20:00</label>
+                <label id="labelOra">Orario termine assemblea: 20:00</label>
                 <input type="range" id="ora" min="15" max="24" step="1" value="20">
             </div>
         </div>
@@ -49,67 +54,67 @@
     </div>
 
     <script>
+        const pdfBase64 = {
+            micarelli: "", 
+            sciarra: "",
+            lucresi: "",
+            mb: ""
+        };
+
         function update() {
+            const unita = parseInt(document.getElementById('unita').value);
             const lavori = parseInt(document.getElementById('lavori').value);
             const numAss = parseInt(document.getElementById('assemblee').value);
             const ora = parseInt(document.getElementById('ora').value);
-            const unita = 45;
             const anni = 3;
 
-            document.getElementById('labelLavori').innerText = `Lavori Straordinari: € ${lavori.toLocaleString()}`;
-            document.getElementById('labelAssemblee').innerText = `Assemblee/anno: ${numAss}`;
-            document.getElementById('labelOra').innerText = `Orario fine assemblea: ${ora}:00`;
+            document.getElementById('labelUnita').innerText = `Unità Immobiliari: ${unita}`;
+            document.getElementById('labelLavori').innerText = `Lavori Straordinari Previsti: € ${lavori.toLocaleString('it-IT')}`;
+            document.getElementById('labelAssemblee').innerText = `Numero Assemblee Annue: ${numAss}`;
+            document.getElementById('labelOra').innerText = `Orario termine assemblea: ${ora}:00`;
 
             const admins = [
                 {
                     name: "Mario Micarelli",
-                    base: 3800 * anni,
-                    lavori: lavori * 0.02,
-                    fisco: 160 * anni,
-                    extraAss: (numAss > 2 ? (numAss - 2) * 150 * anni : 0),
-                    pros: ["Pareri legali/tecnici GRATIS", "Reperibilità h24", "Sito web dedicato"],
-                    cons: ["Sito semplice, non app"],
-                    note: ""
+                    base: 3800 * anni, baseStr: "€ 3.800/anno", baseRef: "Pag. 2",
+                    lavori: lavori * 0.02, lavoriStr: "2% su importo", lavoriRef: "Pag. 2",
+                    fisco: 160 * anni, fiscoStr: "€ 160/anno fiscalità", fiscoRef: "Pag. 2",
+                    extraAss: (numAss > 2 ? (numAss - 2) * 150 * anni : 0), assStr: "2 incluse, extra € 150", assRef: "Pag. 2",
+                    penale: 0,
+                    pdfId: "micarelli"
                 },
                 {
                     name: "Claudio Sciarra",
-                    base: 3500 * anni,
-                    lavori: lavori * 0.03, // Onesto: solo gestione 3%
-                    fisco: (200 * anni) + (55 * anni),
-                    utenze: (unita * 25 * anni),
+                    base: 3500 * anni, baseStr: "€ 3.500/anno", baseRef: "Pag. 1",
+                    lavori: lavori * 0.03, lavoriStr: "3% su importo", lavoriRef: "Pag. 3",
+                    fisco: ((200) + (55) + (unita * 25)) * anni, fiscoStr: "Fisco, Cancelleria, Utenze (€25/cad)", fiscoRef: "Pag. 3",
                     penale: (ora > 19 ? 300 * numAss * anni : 0),
-                    extraAss: (numAss > 2 ? (numAss - 2) * 100 * anni : 0),
-                    pros: ["Uso Google Meet", "App MioCondominio"],
-                    cons: ["Penale oraria 300€", "3% lavori (il più caro)", "Rapporto parentela"],
-                    note: ora > 19 ? "ATTENZIONE: Penale 300€/ora attiva" : ""
+                    extraAss: (numAss > 2 ? (numAss - 2) * 100 * anni : 0), assStr: "2 incluse, extra € 100", assRef: "Pag. 3",
+                    pdfId: "sciarra",
+                    alert: ora > 19 ? "PENALE ORARIA ATTIVA: € 300 per assemblea (Rif. Pag. 3)" : ""
                 },
                 {
                     name: "Massimo Lucresi",
-                    base: (3850 * anni) * 1.04,
-                    lavori: (lavori * 0.02) * 1.04,
-                    fisco: (300 * anni) * 1.04,
-                    utenze: (unita * 25 * anni) * 1.04,
-                    extraAss: (numAss > 2 ? (numAss - 2) * 70 * anni) * 1.04 : 0,
-                    spese: (150 * anni) * 1.04,
-                    pros: ["Gratis piccoli lavori (<1k)", "Certificazione ISO 9001"],
-                    cons: ["INPS 4% su ogni voce", "Costi fiscali alti"],
-                    note: ""
+                    base: (3850 * anni) * 1.04, baseStr: "€ 3.850/anno + 4% INPS", baseRef: "Pag. 2",
+                    lavori: (lavori * 0.02) * 1.04, lavoriStr: "2% + 4% INPS", lavoriRef: "Pag. 2",
+                    fisco: ((300) + (150) + (unita * 25)) * anni * 1.04, fiscoStr: "Fisco, Forfait, Utenze + 4% INPS", fiscoRef: "Pag. 2",
+                    extraAss: (numAss > 2 ? (numAss - 2) * 70 * anni * 1.04 : 0), assStr: "2 incluse, extra € 70 + INPS", assRef: "Pag. 2",
+                    penale: 0,
+                    pdfId: "lucresi"
                 },
                 {
                     name: "Studio MB (Basile)",
-                    base: (4000 + 666) * anni * 1.22,
-                    lavori: (lavori * 0.02) * 1.22,
-                    fisco: (125 * anni) * 1.22,
-                    utenze: (unita * 35 * anni) * 1.22,
-                    extraAss: (numAss > 1 ? (numAss - 1) * 100 * anni) * 1.22 : 0,
-                    pros: ["Struttura con 5 collaboratori", "Esperienza post-sisma"],
-                    cons: ["Il più caro del lotto", "IVA 22% obbligatoria"],
-                    note: ""
+                    base: (4000 + 666) * anni * 1.22, baseStr: "€ 4.000 + 666 spese + 22% IVA", baseRef: "Pag. 4",
+                    lavori: (lavori * 0.02) * 1.22, lavoriStr: "2% + 22% IVA", lavoriRef: "Pag. 5",
+                    fisco: ((125) + (unita * 35)) * anni * 1.22, fiscoStr: "Fisco e Utenze + 22% IVA", fiscoRef: "Pag. 4",
+                    extraAss: (numAss > 1 ? (numAss - 1) * 100 * anni * 1.22 : 0), assStr: "1 inclusa, extra € 100 + IVA", assRef: "Pag. 4",
+                    penale: 0,
+                    pdfId: "mb"
                 }
             ];
 
             admins.forEach(a => {
-                a.total = (a.base || 0) + (a.lavori || 0) + (a.fisco || 0) + (a.utenze || 0) + (a.penale || 0) + (a.extraAss || 0) + (a.spese || 0);
+                a.total = (a.base || 0) + (a.lavori || 0) + (a.fisco || 0) + (a.penale || 0) + (a.extraAss || 0);
             });
 
             admins.sort((a, b) => a.total - b.total);
@@ -122,30 +127,44 @@
                 card.className = `card admin-card ${i === 0 ? 'winner' : ''}`;
                 const mensile = (a.total / anni / unita / 12).toFixed(2);
                 
-                card.innerHTML = `
-                    <h2>${a.name} ${i === 0 ? '🏆' : ''} <span class="price-tag">€ ${Math.round(a.total).toLocaleString()}</span></h2>
-                    <div class="monthly">Quota mensile media: <b>€ ${mensile}</b></div>
-                    ${a.note ? `<div class="alert">${a.note}</div>` : ''}
+                let html = `
+                    <h2>${a.name} ${i === 0 ? '🏆' : ''} <span class="price-tag">€ ${Math.round(a.total).toLocaleString('it-IT')}</span></h2>
+                    <div class="monthly">Quota mensile media a famiglia: <b>€ ${mensile.replace('.', ',')}</b></div>
+                    ${a.alert ? `<div style="color:#e74c3c; font-weight:bold; margin-bottom:10px;">🚨 ${a.alert}</div>` : ''}
                     <div class="details" id="details-${i}">
-                        <p><b>Dettaglio analitico (3 anni):</b></p>
-                        <ul>
-                            <li>Compenso Base: € ${Math.round(a.base || 0).toLocaleString()}</li>
-                            <li>Gestione Lavori: € ${Math.round(a.lavori || 0).toLocaleString()}</li>
-                            <li>Fisco e Utenze: € ${Math.round((a.fisco || 0) + (a.utenze || 0) + (a.spese || 0)).toLocaleString()}</li>
-                            <li>Assemblee/Penali: € ${Math.round((a.extraAss || 0) + (a.penale || 0)).toLocaleString()}</li>
-                        </ul>
-                        <div class="pro-con">
-                            <div class="pro"><b>PRO:</b><br>${a.pros.join('<br>')}</div>
-                            <div class="con"><b>CONTRO:</b><br>${a.cons.join('<br>')}</div>
-                        </div>
+                        <table class="breakdown-table">
+                            <tr>
+                                <td><b>Onorario Base</b><br><span class="page-ref">${a.baseStr} (${a.baseRef})</span></td>
+                                <td>€ ${Math.round(a.base).toLocaleString('it-IT')}</td>
+                            </tr>
+                            <tr>
+                                <td><b>Lavori Straordinari</b><br><span class="page-ref">${a.lavoriStr} (${a.lavoriRef})</span></td>
+                                <td>€ ${Math.round(a.lavori).toLocaleString('it-IT')}</td>
+                            </tr>
+                            <tr>
+                                <td><b>Costi Fissi/Utenze</b><br><span class="page-ref">${a.fiscoStr} (${a.fiscoRef})</span></td>
+                                <td>€ ${Math.round(a.fisco).toLocaleString('it-IT')}</td>
+                            </tr>
+                            <tr>
+                                <td><b>Assemblee / Penali</b><br><span class="page-ref">${a.assStr} (${a.assRef})</span></td>
+                                <td>€ ${Math.round((a.extraAss || 0) + (a.penale || 0)).toLocaleString('it-IT')}</td>
+                            </tr>
+                        </table>
+                        ${pdfBase64[a.pdfId] ? `<a href="${pdfBase64[a.pdfId]}" download="Preventivo_${a.name.replace(' ', '_')}.pdf" class="download-btn">⬇️ Scarica PDF Originale</a>` : `<span style="font-size: 0.8rem; color: #a0aec0; display:block; margin-top:10px;"></span>`}
                     </div>
-                    <div style="text-align:right; font-size:0.8rem; color:#718096; margin-top:10px">Clicca per dettagli</div>
+                    <div style="text-align:right; font-size:0.8rem; color:#718096; margin-top:10px; user-select:none;">Clicca per i dettagli 🔽</div>
                 `;
-                card.onclick = () => document.getElementById(`details-${i}`).classList.toggle('active');
+                card.innerHTML = html;
+                card.onclick = (e) => {
+                    if(e.target.tagName !== 'A') {
+                        document.getElementById(`details-${i}`).classList.toggle('active');
+                    }
+                };
                 resDiv.appendChild(card);
             });
         }
 
+        document.getElementById('unita').addEventListener('input', update);
         document.getElementById('lavori').addEventListener('input', update);
         document.getElementById('assemblee').addEventListener('input', update);
         document.getElementById('ora').addEventListener('input', update);
