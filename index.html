@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Costi Condominio Manzoni</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; line-height: 1.5; padding: 20px; color: #333; max-width: 900px; margin: auto; }
+        .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .controls { display: grid; gap: 15px; margin-bottom: 30px; }
+        .control-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; }
+        .highlight { background-color: #e8f5e9; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Simulatore Piano di Spesa Triennale</h1>
+        <p>Regola i parametri per confrontare i preventivi (45 unità, 3 anni).</p>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label id="lavoriLabel">Importo Lavori Straordinari: € 160.000</label>
+                <input type="range" id="lavori" min="0" max="500000" step="10000" value="160000">
+            </div>
+            <div class="control-group">
+                <label id="assembleeLabel">Assemblee Serali/anno: 4</label>
+                <input type="range" id="serali" min="0" max="10" step="1" value="4">
+            </div>
+        </div>
+
+        <canvas id="costChart" height="150"></canvas>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Amministratore</th>
+                    <th>Totale 3 Anni</th>
+                    <th>Costo Mese/Unità</th>
+                </tr>
+            </thead>
+            <tbody id="resultTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('costChart').getContext('2d');
+        let chart;
+
+        function calculate() {
+            const lavori = parseInt(document.getElementById('lavori').value);
+            const serali = parseInt(document.getElementById('serali').value);
+            const unità = 45;
+            const anni = 3;
+
+            document.getElementById('lavoriLabel').innerText = `Importo Lavori Straordinari: € ${lavori.toLocaleString()}`;
+            document.getElementById('assembleeLabel').innerText = `Assemblee Serali/anno: ${serali}`;
+
+            // LOGICA DI CALCOLO (basata sui preventivi analizzati)
+            const costs = [
+                {
+                    name: "Mario Micarelli",
+                    total: (3800 * anni) + (lavori * 0.02) + (160 * anni) + (serali > 2 ? (serali - 2) * 150 * anni : 0)
+                },
+                {
+                    name: "Claudio Sciarra",
+                    total: (3500 * anni) + (lavori * 0.06) + (serali * 300 * anni) + (unità * 25 * anni) + (200 * anni) + (80 * anni)
+                },
+                {
+                    name: "Massimo Lucresi",
+                    total: ((3850 * 1.04) * anni) + ((lavori * 0.02) * 1.04) + (300 * 1.04 * anni) + (150 * 1.04 * anni) + (serali > 2 ? (serali - 2) * 70 * 1.04 * anni : 0) + (unità * 25 * 1.04 * anni)
+                },
+                {
+                    name: "Studio MB (Basile)",
+                    total: ((4000 + 666) * 1.22 * anni) + ((lavori * 0.02) * 1.22) + (125 * 1.22 * anni) + (serali > 1 ? (serali - 1) * 100 * 1.22 * anni : 0) + (unità * 35 * 1.22 * anni)
+                }
+            ];
+
+            updateUI(costs);
+        }
+
+        function updateUI(costs) {
+            const tbody = document.getElementById('resultTable');
+            tbody.innerHTML = '';
+            
+            const minCost = Math.min(...costs.map(c => c.total));
+
+            costs.forEach(c => {
+                const row = document.createElement('tr');
+                if (c.total === minCost) row.className = 'highlight';
+                
+                const meseUnità = (c.total / 3 / 45 / 12).toFixed(2);
+                
+                row.innerHTML = `
+                    <td>${c.name}</td>
+                    <td>€ ${Math.round(c.total).toLocaleString()}</td>
+                    <td>€ ${meseUnità}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            updateChart(costs);
+        }
+
+        function updateChart(costs) {
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: costs.map(c => c.name),
+                    datasets: [{
+                        label: 'Costo Totale 3 Anni (€)',
+                        data: costs.map(c => c.total),
+                        backgroundColor: costs.map(c => c.total === Math.min(...costs.map(d => d.total)) ? '#4caf50' : '#cfd8dc')
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        document.getElementById('lavori').addEventListener('input', calculate);
+        document.getElementById('serali').addEventListener('input', calculate);
+        calculate();
+    </script>
+</body>
+</html>
